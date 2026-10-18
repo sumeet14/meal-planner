@@ -13,11 +13,17 @@ Built with React, TypeScript, Vite, Tailwind CSS, Zustand and Recharts.
 - **Nutrition**: calories, protein, carbs, fat, fiber, sugar, sodium, calcium, iron and vitamin C, compared with editable daily targets (FDA Daily Values for a 2000 kcal diet by default).
 - **Your data stays in your browser** (localStorage), with JSON export/import for backups.
 
+## Live app
+
+https://sumeet14.github.io/meal-planner/
+
+Each browser keeps its own data. To move your plan between devices, use Settings → Your data → Export backup, then Import backup on the other device.
+
 ## Getting started
 
 ```bash
 npm install
-npm run dev     # http://localhost:5173
+npm run dev     # http://localhost:5173/meal-planner/
 npm test        # unit tests for the nutrition and grocery logic
 npm run build   # type-check and production build
 ```
