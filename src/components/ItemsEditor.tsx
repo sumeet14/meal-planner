@@ -1,6 +1,7 @@
 import { isEstimatedUnit, formatGrams, toGrams } from '../lib/units';
 import { useIngredients } from '../store';
 import { UNITS, type DishItem, type Ingredient, type Unit } from '../types';
+import { Icon } from './Icon';
 import { IngredientPicker } from './IngredientPicker';
 
 function defaultUnit(ing: Ingredient): { qty: number; unit: Unit } {
@@ -10,7 +11,7 @@ function defaultUnit(ing: Ingredient): { qty: number; unit: Unit } {
   return { qty: 100, unit: 'g' };
 }
 
-/** Editable table of ingredients with quantities and units. */
+/** Editable list of ingredients with quantities and units. */
 export function ItemsEditor({ items, onChange }: { items: DishItem[]; onChange: (items: DishItem[]) => void }) {
   const { map } = useIngredients();
 
@@ -18,62 +19,54 @@ export function ItemsEditor({ items, onChange }: { items: DishItem[]; onChange: 
     onChange(items.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
 
   return (
-    <div className="space-y-2">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="text-left text-xs uppercase tracking-wide text-slate-400">
-            <th className="pb-1 font-medium">Ingredient</th>
-            <th className="pb-1 font-medium">Qty</th>
-            <th className="pb-1 font-medium">Unit</th>
-            <th className="pb-1 text-right font-medium">≈ Weight</th>
-            <th />
-          </tr>
-        </thead>
-        <tbody>
+    <div>
+      {items.length > 0 && (
+        <ul className="mb-3 divide-y divide-line rounded-xl border border-line">
           {items.map((item, idx) => {
             const ing = map[item.ingredientId];
             const estimated = isEstimatedUnit(item.unit, ing);
             return (
-              <tr key={idx} className="border-t border-slate-100">
-                <td className="py-1 pr-2">{ing?.name ?? <span className="text-red-500">Missing: {item.ingredientId}</span>}</td>
-                <td className="py-1 pr-2">
+              <li key={idx} className="flex flex-wrap items-center gap-x-2 gap-y-1.5 px-3 py-2">
+                <span className="min-w-[8rem] flex-1 text-sm font-medium">
+                  {ing?.name ?? <span className="text-high">Missing ingredient ({item.ingredientId})</span>}
+                </span>
+                <div className="flex items-center gap-2">
                   <input
                     type="number" min={0} step="any"
-                    className="input w-20"
+                    aria-label={`${ing?.name ?? 'Ingredient'} quantity`}
+                    className="input num h-8 w-[4.5rem] px-2 text-right"
                     value={Number.isFinite(item.qty) ? Math.round(item.qty * 100) / 100 : ''}
                     onChange={(e) => update(idx, { qty: parseFloat(e.target.value) || 0 })}
                   />
-                </td>
-                <td className="py-1 pr-2">
                   <select
-                    className="input"
+                    aria-label={`${ing?.name ?? 'Ingredient'} unit`}
+                    className="input h-8 px-2"
                     value={item.unit}
                     onChange={(e) => update(idx, { unit: e.target.value as Unit })}
                   >
                     {UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
                   </select>
-                </td>
-                <td
-                  className={`py-1 text-right tabular-nums ${estimated ? 'text-amber-600' : 'text-slate-500'}`}
-                  title={estimated ? 'No weight known for this unit; using a generic estimate' : undefined}
-                >
-                  {formatGrams(toGrams(item, ing))}{estimated && '*'}
-                </td>
-                <td className="py-1 pl-1 text-right">
+                  <span
+                    className={`num w-16 text-right text-[13px] ${estimated ? 'text-low' : 'text-ink-3'}`}
+                    title={estimated ? 'No weight known for this unit, so this is a rough estimate' : undefined}
+                  >
+                    {item.unit === 'g' ? '' : `≈ ${formatGrams(toGrams(item, ing))}`}{estimated && '*'}
+                  </span>
                   <button
-                    className="btn-danger px-2"
-                    aria-label="Remove ingredient"
+                    className="btn-icon h-8 w-8 hover:text-high"
+                    aria-label={`Remove ${ing?.name ?? 'ingredient'}`}
                     onClick={() => onChange(items.filter((_, i) => i !== idx))}
-                  >✕</button>
-                </td>
-              </tr>
+                  ><Icon name="close" size={16} /></button>
+                </div>
+              </li>
             );
           })}
-        </tbody>
-      </table>
-      <IngredientPicker
-        onPick={(ing) => onChange([...items, { ingredientId: ing.id, ...defaultUnit(ing) }])}
-      />
+        </ul>
+      )}
+      <IngredientPicker onPick={(ing) => onChange([...items, { ingredientId: ing.id, ...defaultUnit(ing) }])} />
+      {items.some((it) => isEstimatedUnit(it.unit, map[it.ingredientId])) && (
+        <p className="hint mt-2">* Estimated weight. Set grams per unit for that ingredient in Settings for a better figure.</p>
+      )}
     </div>
   );
 }

@@ -2,11 +2,14 @@ import { useMemo, useState } from 'react';
 import { dishNutrients } from '../lib/nutrition';
 import { useIngredients, usePlanner } from '../store';
 import type { Dish } from '../types';
+import { SearchInput, Stepper } from './Controls';
+import { Icon } from './Icon';
 import { Modal } from './Modal';
 
 /** Searchable list of catalogue dishes; favourites and dishes tagged for the slot come first. */
-export function DishPicker({ title, slot, onPick, onCreate, onClose }: {
+export function DishPicker({ title, subtitle, slot, onPick, onCreate, onClose }: {
   title: string;
+  subtitle?: string;
   slot?: string;
   onPick: (dish: Dish, servings: number) => void;
   onCreate: () => void;
@@ -26,48 +29,47 @@ export function DishPicker({ title, slot, onPick, onCreate, onClose }: {
   }, [dishes, query, slot]);
 
   return (
-    <Modal title={title} onClose={onClose}>
-      <div className="mb-3 flex gap-2">
-        <input
-          autoFocus
-          className="input flex-1"
-          placeholder="Search dishes or tags…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-        <label className="flex items-center gap-1 text-sm text-slate-600">
-          Servings
-          <input
-            type="number" min={0.25} step={0.25}
-            className="input w-16"
-            value={servings}
-            onChange={(e) => setServings(parseFloat(e.target.value) || 1)}
-          />
-        </label>
+    <Modal
+      title={title}
+      subtitle={subtitle}
+      onClose={onClose}
+      footer={
+        <button className="btn-secondary mr-auto" onClick={onCreate}>
+          <Icon name="plus" size={16} />New dish
+        </button>
+      }
+    >
+      <div className="sticky top-0 z-10 -mx-5 mb-2 flex gap-2 bg-surface px-5 pb-3">
+        <div className="flex-1">
+          <SearchInput autoFocus value={query} onChange={setQuery} placeholder="Search dishes or tags" />
+        </div>
+        <Stepper label="servings" value={servings} onChange={setServings} step={0.5} min={0.25} />
       </div>
-      <ul className="divide-y divide-slate-100">
+      {list.length === 0 && (
+        <p className="py-8 text-center text-sm text-ink-2">No dish matches "{query}". Create it as a new dish.</p>
+      )}
+      <ul className="-mx-2">
         {list.map((d) => {
-          const n = dishNutrients(d, map, 1);
+          const n = dishNutrients(d, map, servings);
           return (
             <li key={d.id}>
               <button
-                className="flex w-full items-center justify-between px-1 py-2 text-left hover:bg-emerald-50"
+                className="flex w-full items-center gap-3 rounded-lg px-2 py-2.5 text-left hover:bg-sunk"
                 onClick={() => onPick(d, servings)}
               >
-                <span>
-                  {d.favorite && <span className="mr-1 text-amber-500">★</span>}
-                  {d.name}
-                  <span className="ml-2 text-xs text-slate-400">{d.tags.join(', ')}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-1.5 font-medium">
+                    {d.name}
+                    {d.favorite && <Icon name="star" size={14} filled className="text-ink" aria-label="Favourite" />}
+                  </span>
+                  {d.tags.length > 0 && <span className="block truncate text-[13px] text-ink-3">{d.tags.join(', ')}</span>}
                 </span>
-                <span className="text-xs text-slate-500">{Math.round(n.kcal)} kcal / serving</span>
+                <span className="num shrink-0 text-sm text-ink-2">{Math.round(n.kcal)} kcal</span>
               </button>
             </li>
           );
         })}
       </ul>
-      <button className="btn-ghost mt-3 w-full justify-center border border-dashed border-slate-300" onClick={onCreate}>
-        + Create a new dish
-      </button>
     </Modal>
   );
 }

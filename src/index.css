@@ -2,11 +2,34 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer components {
-  .btn { @apply inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-sm font-medium transition; }
-  .btn-primary { @apply btn bg-emerald-600 text-white hover:bg-emerald-700; }
-  .btn-ghost { @apply btn text-slate-600 hover:bg-slate-100; }
-  .btn-danger { @apply btn text-red-600 hover:bg-red-50; }
-  .card { @apply rounded-lg border border-slate-200 bg-white shadow-sm; }
-  .input { @apply rounded-md border border-slate-300 px-2 py-1 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500; }
+@layer base {
+  html { -webkit-tap-highlight-color: transparent; }
+  body { @apply bg-canvas font-sans text-[15px] text-ink antialiased; }
+  :focus-visible { @apply outline outline-2 outline-offset-2 outline-ink; }
+  input[type='number'] { -moz-appearance: textfield; }
+  input[type='number']::-webkit-inner-spin-button,
+  input[type='number']::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
 }
+
+@layer components {
+  .btn { @apply inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg px-3.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40; }
+  .btn-primary { @apply btn bg-ink text-white hover:bg-ink/90; }
+  .btn-secondary { @apply btn border border-line-strong bg-surface text-ink hover:bg-sunk; }
+  .btn-ghost { @apply btn text-ink-2 hover:bg-ink/5 hover:text-ink; }
+  .btn-danger { @apply btn text-high hover:bg-high/10; }
+  .btn-icon { @apply btn w-9 px-0 text-ink-2 hover:bg-ink/5 hover:text-ink; }
+
+  .panel { @apply rounded-xl border border-line bg-surface; }
+  .input { @apply h-9 rounded-lg border border-line-strong bg-surface px-3 text-sm text-ink placeholder:text-ink-3 focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink; }
+
+  .page-title { @apply font-display text-[2rem] font-semibold leading-none tracking-tight sm:text-[2.5rem]; }
+  .section-title { @apply font-display text-lg font-semibold tracking-tight; }
+  .hint { @apply text-[13px] leading-snug text-ink-3; }
+  .num { font-variant-numeric: tabular-nums; }
+}
+
+@keyframes sheet { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes drawer { from { transform: translateX(32px); opacity: 0; } to { transform: none; opacity: 1; } }

@@ -11,19 +11,18 @@ export function MealCard({ meal, onOpen }: { meal: PlannedMeal; onOpen: () => vo
   return (
     <button
       onClick={onOpen}
-      className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-left shadow-sm transition hover:border-emerald-400"
+      className="group w-full rounded-lg border border-line bg-sunk px-2.5 py-2 text-left transition-colors hover:border-ink/40 hover:bg-surface"
     >
-      <div className="flex items-start justify-between gap-1">
-        <span className="text-sm font-medium leading-tight">{dish?.name ?? 'Deleted dish'}</span>
-        {meal.servings !== 1 && <span className="shrink-0 text-xs text-slate-400">×{meal.servings}</span>}
-      </div>
-      <div className="mt-0.5 flex gap-2 text-[11px] text-slate-500">
-        <span className="font-medium text-slate-700">{Math.round(n.kcal)} kcal</span>
-        <span>P {Math.round(n.protein)}</span>
-        <span>C {Math.round(n.carbs)}</span>
-        <span>F {Math.round(n.fat)}</span>
-        {meal.overrides && <span className="ml-auto text-amber-600" title="Ingredients edited for this meal">edited</span>}
-      </div>
+      <span className="block text-sm font-medium leading-snug">{dish?.name ?? 'Deleted dish'}</span>
+      <span className="num mt-0.5 flex items-center gap-2 text-[13px] text-ink-3">
+        {Math.round(n.kcal)} kcal
+        {meal.servings !== 1 && <span>×{meal.servings}</span>}
+        {meal.overrides && (
+          <span className="ml-auto flex items-center gap-1 text-ink-2" title="Ingredients changed for this meal">
+            <span className="h-1.5 w-1.5 rounded-full bg-ink-3" />edited
+          </span>
+        )}
+      </span>
     </button>
   );
 }

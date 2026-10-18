@@ -1,16 +1,61 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Segmented } from '../components/Controls';
 import { DishEditor, newDish } from '../components/DishEditor';
 import { DishPicker } from '../components/DishPicker';
+import { Icon } from '../components/Icon';
 import { MealCard } from '../components/MealCard';
 import { MealDrawer } from '../components/MealDrawer';
-import { NutrientBars } from '../components/NutrientBars';
-import { addDays, dateRange, formatDay, today } from '../lib/dates';
-import { dayTotals } from '../lib/nutrition';
+import { TargetBar } from '../components/NutrientBars';
+import { addDays, dateRange, formatDay, formatRange, today } from '../lib/dates';
+import { dayTotals, targetStatus } from '../lib/nutrition';
 import { useDishMap, useIngredients, usePlanner } from '../store';
-import { SLOTS, type Slot } from '../types';
+import { SLOTS, type Nutrients, type Slot } from '../types';
 
-const SUMMARY_KEYS = ['kcal', 'protein', 'carbs', 'fat', 'fiber'] as const;
+const SLOT_LABEL: Record<Slot, string> = { breakfast: 'Breakfast', lunch: 'Lunch', snack: 'Snack', dinner: 'Dinner' };
+const GRID = 'md:grid-cols-[76px_repeat(4,minmax(0,1fr))_168px]';
+
+function DateMark({ date, isToday }: { date: string; isToday: boolean }) {
+  const { weekday, day } = formatDay(date);
+  return (
+    <div className="flex items-baseline gap-2 md:flex-col md:items-start md:gap-0">
+      <span
+        className={`font-display text-[2rem] font-semibold leading-none tracking-tight md:text-[2.5rem] ${
+          isToday ? 'rounded-lg bg-turmeric px-1.5 md:-ml-1.5' : ''
+        }`}
+      >{day}</span>
+      <span className="text-sm font-medium text-ink-2 md:mt-1.5">
+        {isToday ? <span className="text-ink">Today</span> : weekday}
+      </span>
+    </div>
+  );
+}
+
+function DayTotal({ date, totals, target }: { date: string; totals: Nutrients; target: number }) {
+  const pct = target ? (totals.kcal / target) * 100 : 0;
+  const status = targetStatus(pct, 'range');
+  return (
+    <Link
+      to={`/day/${date}`}
+      className="group block rounded-lg p-2 transition-colors hover:bg-sunk md:-m-2"
+      aria-label={`Nutrition for ${formatDay(date).weekdayLong}`}
+    >
+      <div className="num flex items-baseline gap-1">
+        <span className="font-display text-xl font-semibold">{Math.round(totals.kcal).toLocaleString()}</span>
+        <span className="text-[13px] text-ink-3">/ {target.toLocaleString()} kcal</span>
+      </div>
+      <div className="mt-2"><TargetBar pct={pct} status={status} /></div>
+      <div className="num mt-2 flex flex-wrap gap-x-2 text-[12px] text-ink-2 [&>span]:whitespace-nowrap">
+        <span title="Protein"><span className="text-protein">●</span> P {Math.round(totals.protein)}g</span>
+        <span title="Carbs"><span className="text-carbs">●</span> C {Math.round(totals.carbs)}g</span>
+        <span title="Fat"><span className="text-fat">●</span> F {Math.round(totals.fat)}g</span>
+      </div>
+      <span className="mt-1.5 flex items-center gap-0.5 text-[13px] font-medium text-ink-2 group-hover:text-ink">
+        Nutrition <Icon name="right" size={14} />
+      </span>
+    </Link>
+  );
+}
 
 export function Planner() {
   const { meals, targets, planDays, setPlanDays, addMeal } = usePlanner();
@@ -23,80 +68,95 @@ export function Planner() {
 
   const days = dateRange(start, planDays);
   const todayIso = today();
+  const planned = meals.filter((m) => m.date >= days[0] && m.date <= days[days.length - 1]).length;
 
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <h1 className="mr-auto text-2xl font-semibold">Meal plan</h1>
-        <button className="btn-ghost" onClick={() => setStart(addDays(start, -planDays))}>← Prev</button>
-        <button className="btn-ghost" onClick={() => setStart(todayIso)}>Today</button>
-        <button className="btn-ghost" onClick={() => setStart(addDays(start, planDays))}>Next →</button>
-        <select
-          className="input"
-          value={planDays}
-          onChange={(e) => setPlanDays(Number(e.target.value))}
-          aria-label="Days to show"
-        >
-          {[3, 5, 7].map((n) => <option key={n} value={n}>{n} days</option>)}
-        </select>
+      <div className="mb-6 flex flex-wrap items-end gap-x-4 gap-y-4">
+        <div className="mr-auto">
+          <h1 className="page-title">{formatRange(days[0], days[days.length - 1])}</h1>
+          <p className="mt-2 text-sm text-ink-2">
+            {planned === 0 ? 'Nothing planned yet. Pick a slot to add a meal.' : `${planned} of ${planDays * SLOTS.length} slots planned`}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center">
+            <button className="btn-icon" onClick={() => setStart(addDays(start, -planDays))} aria-label="Earlier days">
+              <Icon name="left" />
+            </button>
+            <button className="btn-ghost" onClick={() => setStart(todayIso)} disabled={start === todayIso}>Today</button>
+            <button className="btn-icon" onClick={() => setStart(addDays(start, planDays))} aria-label="Later days">
+              <Icon name="right" />
+            </button>
+          </div>
+          <Segmented
+            label="Days to show"
+            value={planDays}
+            onChange={setPlanDays}
+            options={[3, 5, 7].map((n) => ({ value: n, label: `${n} days` }))}
+          />
+        </div>
       </div>
 
-      <div className="overflow-x-auto pb-2">
-        <div
-          className="grid min-w-[720px] gap-3"
-          style={{ gridTemplateColumns: `repeat(${planDays}, minmax(150px, 1fr))` }}
-        >
-          {days.map((date) => {
-            const { weekday, label } = formatDay(date);
-            const totals = dayTotals(meals, date, dishes, map);
-            return (
-              <div key={date} className={`card flex flex-col p-2 ${date === todayIso ? 'ring-2 ring-emerald-400' : ''}`}>
-                <div className="mb-2 flex items-baseline justify-between px-1">
-                  <div>
-                    <div className="font-semibold">{weekday}</div>
-                    <div className="text-xs text-slate-500">{label}</div>
-                  </div>
-                  <span className="text-sm font-medium text-slate-600">{Math.round(totals.kcal)} kcal</span>
-                </div>
+      <div className="panel overflow-hidden">
+        <div className={`hidden border-b border-line bg-sunk px-5 py-2.5 text-[13px] font-medium text-ink-2 md:grid md:gap-4 ${GRID}`}>
+          <span />
+          {SLOTS.map((s) => <span key={s}>{SLOT_LABEL[s]}</span>)}
+          <span>Day total</span>
+        </div>
 
-                <div className="flex-1 space-y-2">
-                  {SLOTS.map((slot) => {
-                    const slotMeals = meals.filter((m) => m.date === date && m.slot === slot);
-                    return (
-                      <div key={slot}>
-                        <div className="flex items-center justify-between px-1">
-                          <span className="text-[11px] font-medium uppercase tracking-wide text-slate-400">{slot}</span>
-                          <button
-                            className="rounded px-1.5 text-sm text-emerald-600 hover:bg-emerald-50"
-                            aria-label={`Add ${slot} on ${label}`}
-                            onClick={() => setAdding({ date, slot })}
-                          >+</button>
-                        </div>
-                        <div className="space-y-1">
-                          {slotMeals.map((m) => <MealCard key={m.id} meal={m} onOpen={() => setOpenMeal(m.id)} />)}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <Link
-                  to={`/day/${date}`}
-                  className="mt-3 block rounded-md border-t border-slate-100 px-1 pt-2 hover:bg-slate-50"
-                  title="See the full nutrient breakdown for this day"
-                >
-                  <NutrientBars compact totals={totals} targets={targets} keys={SUMMARY_KEYS} />
-                  <div className="mt-1 text-right text-[11px] text-emerald-600">Details →</div>
+        {days.map((date) => {
+          const totals = dayTotals(meals, date, dishes, map);
+          const isToday = date === todayIso;
+          return (
+            <section
+              key={date}
+              aria-label={formatDay(date).weekdayLong}
+              className={`grid gap-3 border-b border-line px-4 py-4 last:border-0 md:gap-4 md:px-5 md:py-5 ${GRID} ${
+                isToday ? 'bg-turmeric-soft/40' : ''
+              }`}
+            >
+              <div className="flex items-center justify-between md:block">
+                <DateMark date={date} isToday={isToday} />
+                <Link to={`/day/${date}`} className="num flex items-center gap-1 text-sm text-ink-2 md:hidden">
+                  {Math.round(totals.kcal).toLocaleString()} kcal <Icon name="right" size={14} />
                 </Link>
               </div>
-            );
-          })}
-        </div>
+
+              {SLOTS.map((slot) => {
+                const slotMeals = meals.filter((m) => m.date === date && m.slot === slot);
+                return (
+                  <div key={slot} className="grid grid-cols-[76px_1fr] items-start gap-2 md:block md:space-y-1.5">
+                    <span className="pt-2 text-[13px] font-medium text-ink-3 md:hidden">{SLOT_LABEL[slot]}</span>
+                    <div className="space-y-1.5">
+                      {slotMeals.map((m) => <MealCard key={m.id} meal={m} onOpen={() => setOpenMeal(m.id)} />)}
+                      <button
+                        onClick={() => setAdding({ date, slot })}
+                        aria-label={`Add ${slot} on ${formatDay(date).weekdayLong}`}
+                        className={`flex w-full items-center gap-1.5 rounded-lg border border-dashed border-line-strong text-ink-3 transition-colors hover:border-ink hover:bg-surface hover:text-ink ${
+                          slotMeals.length ? 'h-8 justify-center border-transparent text-[13px]' : 'h-12 px-3 text-sm md:h-[3.75rem] md:justify-center'
+                        }`}
+                      >
+                        <Icon name="plus" size={15} />
+                        {slotMeals.length ? 'Add' : <span className="md:sr-only">Add {slot}</span>}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+
+              <div className="hidden md:block">
+                <DayTotal date={date} totals={totals} target={targets.kcal} />
+              </div>
+            </section>
+          );
+        })}
       </div>
 
       {adding && (
         <DishPicker
           title={`Add ${adding.slot}`}
+          subtitle={formatDay(adding.date).weekdayLong + ', ' + formatDay(adding.date).label}
           slot={adding.slot}
           onClose={() => setAdding(null)}
           onPick={(dish, servings) => { addMeal(adding.date, adding.slot, dish.id, servings); setAdding(null); }}
